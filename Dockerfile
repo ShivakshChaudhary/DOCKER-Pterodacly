@@ -76,4 +76,4 @@ EXPOSE 6080
 
 ENTRYPOINT ["/usr/bin/tini","--"]
 
-CMD ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord","-c","/etc/supervisor/conf.d/supervisord.conf"]
