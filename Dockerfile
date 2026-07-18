@@ -1,79 +1,17 @@
 FROM --platform=linux/amd64 ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV USER=container
-ENV HOME=/home/container
-ENV DISPLAY=:1
-ENV VNC_PORT=5901
-ENV NOVNC_PORT=6080
-ENV RESOLUTION=1280x720
-ENV TZ=UTC
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    tini \
-    supervisor \
-    dbus \
-    dbus-x11 \
-    xfce4 \
-    xfce4-goodies \
-    tigervnc-standalone-server \
-    tigervnc-common \
-    novnc \
-    websockify \
-    xterm \
-    x11-xserver-utils \
-    x11-utils \
-    xfonts-base \
-    xfonts-100dpi \
-    xfonts-75dpi \
-    xfonts-scalable \
-    xfonts-cyrillic \
-    firefox \
-    wget \
-    curl \
-    git \
-    sudo \
-    unzip \
-    zip \
-    vim \
-    nano \
-    net-tools \
-    procps \
-    htop \
-    ca-certificates \
-    openssl \
-    locales \
-    tzdata && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN locale-gen en_US.UTF-8
-ENV LANG=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
-
-RUN useradd -m -d /home/container -s /bin/bash container && \
-    echo "container ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-RUN mkdir -p \
-    /home/container/.vnc \
-    /var/log/supervisor \
-    /etc/supervisor/conf.d \
-    /run/dbus
-
-COPY entrypoint.sh /entrypoint.sh
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY xstartup /home/container/.vnc/xstartup
-
-RUN chmod +x /entrypoint.sh && \
-    chmod +x /home/container/.vnc/xstartup && \
-    chown -R container:container /home/container
-
-WORKDIR /home/container
-
+RUN apt update -y && apt install --no-install-recommends -y xfce4 xfce4-goodies tigervnc-standalone-server novnc websockify sudo xterm init systemd snapd vim net-tools curl wget git tzdata
+RUN apt update -y && apt install -y dbus-x11 x11-utils x11-xserver-utils x11-apps
+RUN apt install software-properties-common -y
+RUN add-apt-repository ppa:mozillateam/ppa -y
+RUN echo 'Package: *' >> /etc/apt/preferences.d/mozilla-firefox
+RUN echo 'Pin: release o=LP-PPA-mozillateam' >> /etc/apt/preferences.d/mozilla-firefox
+RUN echo 'Pin-Priority: 1001' >> /etc/apt/preferences.d/mozilla-firefox
+RUN echo 'Unattended-Upgrade::Allowed-Origins:: "LP-PPA-mozillateam:jammy";' | tee /etc/apt/apt.conf.d/51unattended-upgrades-firefox
+RUN apt update -y && apt install -y firefox
+RUN apt update -y && apt install -y xubuntu-icon-theme
+RUN touch /root/.Xauthority
 EXPOSE 5901
 EXPOSE 6080
-
-ENTRYPOINT ["/usr/bin/tini","--"]
-
-CMD ["/usr/bin/supervisord","-c","/etc/supervisor/conf.d/supervisord.conf"]
+CMD bash -c "vncserver -localhost no -SecurityTypes None -geometry 1024x768 --I-KNOW-THIS-IS-INSECURE && openssl req -new -subj "/C=JP" -x509 -days 365 -nodes -out self.pem -keyout self.pem && websockify -D --web=/usr/share/novnc/ --cert=self.pem 6080 localhost:5901 && tail -f /dev/null"
